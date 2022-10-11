@@ -1,4 +1,5 @@
 ﻿using ChoETL;
+using System.Text;
 
 public static class Program
 {
@@ -9,6 +10,12 @@ public static class Program
     {
         try
         {
+            if (args == null || args.Length == 0)
+            {
+                Console.WriteLine("Please provide file name 'without' the file extension (i.e. 'senators')");
+                return;
+            }
+
             string fileName = args[0];
             string jsonFileName = $"{_jsonFilePath}{fileName}.json";
             string csvFileName = $"{_csvFilePath}{fileName}.csv";
@@ -17,13 +24,22 @@ public static class Program
             Console.WriteLine($"(jsonFileName): '{jsonFileName}'");
             Console.WriteLine($"(csvFileName).: '{csvFileName}'");
 
-            using (var csv = new ChoCSVWriter(csvFileName).WithFirstLineHeader())
+            var sampleJson = File.ReadAllText(jsonFileName);
+
+            StringBuilder stringBuilder = new StringBuilder();
+            using (var data = ChoJSONReader.LoadText(sampleJson).WithJSONPath("$.objects"))
             {
-                using (var json = new ChoJSONReader(jsonFileName))
+                using (var w = new ChoCSVWriter(stringBuilder)
+                    //.WithFirstLineHeader()
+                    .Configure(c => c.MaxScanRows = 1)
+                    .Configure(c => c.ThrowAndStopOnMissingField = false)
+                    )
                 {
-                    csv.Write(json);
+                    w.Write(data);
                 }
             }
+
+            File.WriteAllText(csvFileName, stringBuilder.ToString());
         }
         catch(Exception exc)
         {
@@ -35,21 +51,3 @@ public static class Program
         }
     }
 }
-
-//using (var csv = new ChoCSVWriter(csvDestinationFile).WithFirstLineHeader())
-//{
-//    using (var json = new ChoJSONReader(jsonSourceFile)
-//        //.WithField("FirstName")
-//        //.WithField("LastName")
-//        //.WithField("Age", fieldType: typeof(int))
-//        //.WithField("StreetAddress", jsonPath: "$.address.streetAddress", isArray: false)
-//        //.WithField("City", jsonPath: "$.address.city", isArray: false)
-//        //.WithField("State", jsonPath: "$.address.state", isArray: false)
-//        //.WithField("PostalCode", jsonPath: "$.address.postalCode", isArray: false)
-//        //.WithField("Phone", jsonPath: "$.phoneNumber[?(@.type=='home')].number", isArray: false)
-//        //.WithField("Fax", jsonPath: "$.phoneNumber[?(@.type=='fax')].number", isArray: false)
-//    )
-//    {
-//        csv.Write(json);
-//    }
-//}
